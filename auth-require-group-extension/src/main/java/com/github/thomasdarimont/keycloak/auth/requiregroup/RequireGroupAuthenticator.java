@@ -25,27 +25,32 @@ public class RequireGroupAuthenticator implements Authenticator {
         String groupPath = configModel.getConfig().get(RequireGroupAuthenticatorFactory.GROUP);
         RealmModel realm = context.getRealm();
         UserModel user = context.getUser();
+        KeycloakSession session = context.getSession();
 
-        if (!isMemberOfGroup(realm, user, groupPath)) {
-
-            LOG.debugf("Access denied because of missing group membership. realm=%s username=%s groupPath=%s", realm.getName(), user.getUsername(), groupPath);
-            context.cancelLogin();
+        String[] groups = groupPath.split(",");
+        
+		for (int i = 0; i < groups.length; i++) {
+           if (isMemberOfGroup(session, realm, user, groups[i])) {
+            LOG.warnf("Access grantes because of group membership. realm=%s username=%s groupPath=%s", realm.getName(), user.getUsername(), groups[i]);
+            context.success();
             return;
-        }
+            }
+				}
+        context.cancelLogin();
 
-        context.success();
     }
 
-    private boolean isMemberOfGroup(RealmModel realm, UserModel user, String groupPath) {
+    private boolean isMemberOfGroup(KeycloakSession session, RealmModel realm, UserModel user, String groupPath) {
 
         if (groupPath == null) {
             return false;
         }
 
-        GroupModel group = KeycloakModelUtils.findGroupByPath(realm, groupPath);
+        GroupModel group = KeycloakModelUtils.findGroupByPath(session, realm, groupPath);
 
         return user.isMemberOf(group);
     }
+
 
 
     @Override
